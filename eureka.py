@@ -6,17 +6,16 @@ import re
 import subprocess
 import argparse
 import os
-from collections import OrderedDict
 
 def GetBanner():
 	return '\nEureka! :)\n'
 
 def GetUsage():
-	return 'python eureka.py -f fileName.ext --je --mails --urls --lang eng'
+	return 'python eureka.py -f fileName.ext --fb --je --mails --urls --lang eng'
 
 def GetDescription():
 	return """
-	Eureka! is search tool that identifies mail artifacts, urls, email addresses and human language in files (mostly, in memory dumps). NOTE: To save the results into a file, please redirect the output..
+	Eureka! is search tool that identifies Facebook Chats, Emails, URLs, Email Addresses and Human Language in very, very large files (mostly, in memory dumps). NOTE: To save the results into a file, please redirect the output..
 	"""
 
 def notFound():
@@ -40,9 +39,10 @@ def StringSearch(filename):
 def WarmingUp():
 	parser = argparse.ArgumentParser(description=GetDescription(), usage=GetUsage())
 	parser.add_argument("-f", metavar='File_Name', nargs=1, required=True, help="File to analyze.")
-	parser.add_argument("--je",action='store_true', help="Will search JSON Emails. (Raw output)")
-	parser.add_argument("--mails", action='store_true', help="Will search mail addresses.")
-	parser.add_argument("--urls", action='store_true', help="Will search URLs.")
+	parser.add_argument("--je",action='store_true', help="JSON Emails Search. (Raw output)")
+	parser.add_argument("--mails", action='store_true', help="Mail Addresses search.")
+	parser.add_argument("--urls", action='store_true', help="URLs search.")
+	parser.add_argument("--fb", action='store_true', help="Facebook chats search.")
 	parser.add_argument("--lang", metavar='\'eng\' [or] \'esp\'', nargs=1, help="Identify human language in a given file. 'esp' for spanish, 'eng' for english language identification. Example: python eureka.py --lan eng pagefile.sys")
 	
 	return parser.parse_args()
@@ -57,6 +57,28 @@ def SearchMails(fileName):
 			for match in matches:
 				found += 1
 				print match.group() 
+		if found == 0:
+			print(notFound())
+
+def FilterFBChat(chat):
+	filReg = "\"(?:thread_id|message_id|author|timestamp|body)\":\"{0,1}[^\"\,]+[\"|\,]"
+	re.compile(filReg)
+	matches2 = re.finditer(filReg, chat)
+	for match2 in matches2:
+		print match2.group()
+
+def SearchFBChat(fileName):
+	print("\n[i]- Now, Facebook chats are being searched..")
+	print("\t[i]- To get the identity of the Author, use: https://www.facebook.com/profile.php?id={AUTHOR FBID NUMBER}")
+	with open(fileName,'r') as memDumpFile:
+		regChat = r".*\[\"source:chat\"\].*"
+		re.compile(regChat)
+		found = 0
+		for line in memDumpFile:
+			matches = re.finditer(regChat, line)
+			for match in matches:
+				found += 1
+				FilterFBChat(match.group())			
 		if found == 0:
 			print(notFound())
 
@@ -109,7 +131,7 @@ def depShorts(possibleWords):
 	for word in possibleWords:
 		if len(word) < 2:
 			cantSingle += 1
-	return cantSingle <= len(possibleWords)/2
+	return cantSingle <= len(possibleWords)/2			
 
 def RemoveNonLetters(message, lang):
 	lettersOnly = []
@@ -142,7 +164,7 @@ if __name__ == "__main__":
 	print(GetBanner())
 	args = WarmingUp()
 
-	if not args.je and not args.mails and not args.lang and not args.urls:
+	if not args.je and not args.mails and not args.lang and not args.urls and not args.fb:
 		print("\n[!]- Maybe you need help, as no parameter were provided. You can try with \'eureka.py -h\'..\n")
 	else:
 		print("\n[i]- Searching strings in the file, please be patient..")
@@ -159,9 +181,12 @@ if __name__ == "__main__":
 		
 	if args.urls:
 		print("\n[i]- Now, URLs are being searched..")
-		urlReg = r"(?=https?://|ftp://|www\.)([^\s\"\'\)\>]+)"
+		urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
 		SearchData(GetOutFileName(), urlReg)
 		
+	if args.fb:
+		SearchFBChat(GetOutFileName())	
+
 	if args.lang:
 		SearchLanguage(GetOutFileName(), args.lang)
 	
