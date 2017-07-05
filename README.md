@@ -2,7 +2,7 @@
 
 <b>Introduction</b>
 
-Eureka! is an open source search tool that identifies Facebook Chats, Emails, URLs, Email Addresses and Human Language in very, very large files (mostly, in memory dumps). NOTE: To save the results into a file, please redirect the output..
+Eureka is a forensic open source search tool that identifies Facebook Chats, Emails, URLs, Email Addresses and Human Language in very, very large files (mostly, in memory dumps). NOTE: To save the results into a file, please redirect the output..
 
 <b>Usage</b> </br>
 python eureka.py -f fileName.ext --fb --je --mails --urls --lang eng
