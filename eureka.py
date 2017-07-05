@@ -43,8 +43,7 @@ def WarmingUp():
 	parser.add_argument("--mails", action='store_true', help="Mail Addresses search.")
 	parser.add_argument("--urls", action='store_true', help="URLs search.")
 	parser.add_argument("--fb", action='store_true', help="Facebook chats search.")
-	parser.add_argument("--lang", metavar='\'eng\' [or] \'esp\'', nargs=1, help="Identify human language in a given file. 'esp' for spanish, 'eng' for english language identification. Example: python eureka.py --lan eng pagefile.sys")
-	
+	parser.add_argument("--lang", metavar='\'eng\' [or] \'esp\'', nargs=1, help="Identify human language in a given file. 'esp' for spanish, 'eng' for english language identification. Example: python eureka.py -f pagefile.sys --lan eng ")
 	return parser.parse_args()
 
 def SearchMails(fileName):
@@ -61,7 +60,7 @@ def SearchMails(fileName):
 			print(notFound())
 
 def FilterFBChat(chat):
-	filReg = "\"(?:thread_id|message_id|author|timestamp|body)\":\"{0,1}[^\"\,]+[\"|\,]"
+	filReg = "\"(?:thread_id|message_id|author|timestamp|body)\":\"{0,1}[^\"]+[\"|\,]"
 	re.compile(filReg)
 	matches2 = re.finditer(filReg, chat)
 	for match2 in matches2:
@@ -165,7 +164,7 @@ if __name__ == "__main__":
 	args = WarmingUp()
 
 	if not args.je and not args.mails and not args.lang and not args.urls and not args.fb:
-		print("\n[!]- Maybe you need help, as no parameter were provided. You can try with \'eureka.py -h\'..\n")
+		print("\n[!]- Maybe you need help, as no parameter was provided. You can try with \'eureka.py -h\'..\n")
 	else:
 		print("\n[i]- Searching strings in the file, please be patient..")
 		StringSearch(args.f[0])
