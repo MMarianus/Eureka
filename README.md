@@ -49,4 +49,4 @@ For full detection, just run: python eureka.py -f fileName.ext --fb --je --mails
 </tbody>
 </table>
 
-</br>If any <b>bug</> is found, please let me know! =)
+</br>If any <b>bug</b> is found, please let me know! =)
