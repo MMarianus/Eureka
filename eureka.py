@@ -47,18 +47,17 @@ def WarmingUp():
 	return parser.parse_args()
 
 def SearchMails(fileName):
-	with open(fileName,'r') as memDumpFile:
-		regex = r".*email\\.*"
-		re.compile(regex)
-		found = 0
-		for line in memDumpFile:
-			matches = re.finditer(regex, line)
-			for match in matches:
-				found += 1
-				print match.group() 
-		if found == 0:
-			print(notFound())
-
+   with open(fileName,'r') as memDumpFile:
+      regex = r".*email\\.*"
+      re.compile(regex)
+      found = 0
+      for line in memDumpFile:
+         if "email\\u" in line:
+            found += 1
+            print(line)
+      if found == 0:
+         print(notFound())
+            
 def FilterFBChat(chat):
 	filReg = "\"(?:thread_id|message_id|author|timestamp|body)\":\"{0,1}[^\"]+[\"|\,]"
 	re.compile(filReg)
@@ -67,35 +66,36 @@ def FilterFBChat(chat):
 		print match2.group()
 
 def SearchFBChat(fileName):
-	print("\n[i]- Now, Facebook chats are being searched..")
-	print("\t[i]- To get the identity of the Author, use: https://www.facebook.com/profile.php?id={AUTHOR FBID NUMBER}")
-	with open(fileName,'r') as memDumpFile:
-		regChat = r".*\[\"source:chat\"\].*"
-		re.compile(regChat)
-		found = 0
-		for line in memDumpFile:
-			matches = re.finditer(regChat, line)
-			for match in matches:
-				found += 1
-				FilterFBChat(match.group())			
-		if found == 0:
-			print(notFound())
+   print("\n[i]- Now, Facebook chats are being searched..")
+   print("\t[i]- To get the identity of the Author, use: https://www.facebook.com/profile.php?id={AUTHOR FBID NUMBER}")
+   with open(fileName,'r') as memDumpFile:
+      found = 0
+      for line in memDumpFile:
+         if "source:chat:" in line:
+            found += 1
+            FilterFBChat(line)
+      if found == 0:
+         print(notFound())
 
 def SearchData(fileName, regex):
-	allData = {}
-	re.compile(regex)
-	with open(fileName,'r') as memDumpFile:
-		found = 0
-		for line in memDumpFile:
-			matches = re.finditer(regex, line)
-			for match in matches:
-				found += 1
-				allData[match.group().replace('u003c','').replace('u003e','').replace('u003d','')] = 'data'
-	if found == 0:
-		print(notFound())
-	else:
-		for data in allData:
-			print data
+   allData = {}
+   re.compile(regex)
+   with open(fileName,'r') as memDumpFile:
+      for line in memDumpFile:
+         if isURLValidation(regex) == True:
+            if "www." not in line and "http" not in line and "ftp" not in line:
+               continue
+         else:
+            if "@" not in line:
+               continue
+         matches = re.finditer(regex, line)
+         for match in matches:
+            allData[match.group().replace('u003c','').replace('u003e','').replace('u003d','')] = 'data'
+      if not allData:
+         print(notFound())
+      else:
+         for data in allData:
+            print data
 			
 def LoadDictionary(lang):
 	if 'eng' in lang:
@@ -158,36 +158,42 @@ def SearchLanguage(fileName, lang):
 			for line in file:
 				if IsValidLanguage(lang, line, dictionary):
 					print line.replace('\n','')
+
+def isURLValidation(regex):
+   if "http" in regex:
+      return True
+   return False
 				
 if __name__ == "__main__":
-	print(GetBanner())
-	args = WarmingUp()
+    print(GetBanner())
+    args = WarmingUp()
 
-	if not args.je and not args.mails and not args.lang and not args.urls and not args.fb:
-		print("\n[!]- Maybe you need help, as no parameter was provided. You can try with \'eureka.py -h\'..\n")
-	else:
-		print("\n[i]- Searching strings in the file, please be patient..")
-		StringSearch(args.f[0])
+    if not args.je and not args.mails and not args.lang and not args.urls and not args.fb:
+        print("\n[!]- Maybe you need help, as no parameter was provided. You can try with \'eureka.py -h\'..\n")
+        quit()
+        
+    print("\n[i]- Searching strings in the file, please be patient..")
+    StringSearch(args.f[0])
+    
+    if args.je:
+       print("\n[i]- Now, JSON Emails are being searched..")
+       SearchMails(GetOutFileName())
+		
+    if args.mails:
+       print("\n[i]- Now, Email Addresses are being searched..")
+       mailReg = r"(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
+       SearchData(GetOutFileName(), mailReg)
+		
+    if args.urls:
+       print("\n[i]- Now, URLs are being searched..")
+       urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
+       SearchData(GetOutFileName(), urlReg)
+		
+    if args.fb:
+       SearchFBChat(GetOutFileName())	
 
-	if args.je:
-		print("\n[i]- Now, JSON Emails are being searched..")
-		SearchMails(GetOutFileName())
-		
-	if args.mails:
-		print("\n[i]- Now, Email Addresses are being searched..")
-		mailReg = r"(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
-		SearchData(GetOutFileName(), mailReg)
-		
-	if args.urls:
-		print("\n[i]- Now, URLs are being searched..")
-		urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
-		SearchData(GetOutFileName(), urlReg)
-		
-	if args.fb:
-		SearchFBChat(GetOutFileName())	
-
-	if args.lang:
-		SearchLanguage(GetOutFileName(), args.lang)
+    if args.lang:
+       SearchLanguage(GetOutFileName(), args.lang)
 	
-	print("\n")
-	os.remove(GetOutFileName())
+    print("\n")
+    os.remove(GetOutFileName())
