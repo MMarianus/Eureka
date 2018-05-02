@@ -48,8 +48,6 @@ def WarmingUp():
 
 def SearchMails(fileName):
    with open(fileName,'r') as memDumpFile:
-      regex = r".*email\\.*"
-      re.compile(regex)
       found = 0
       for line in memDumpFile:
          if "email\\u" in line:
