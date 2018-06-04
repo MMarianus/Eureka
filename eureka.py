@@ -145,7 +145,7 @@ def RemoveNonLetters(message, lang):
     delTable = langDelTable[lang[0]]
     return message.translate(None, delTable)
 
-def IsValidLanguage(lang, message, dictionary, wordPercentage=20, letterPercentage=80):
+def IsValidLanguage(lang, message, dictionary, wordPercentage=.2, letterPercentage=.8):
     message = message.lower()
     originalMessageLength = len(message)
     message = RemoveNonLetters(message, lang)
