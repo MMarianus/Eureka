@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # @MMerianus 2017 - eureka.py - The forensic search tool..
 
+from __future__ import division
+
 import re
 import subprocess
 import argparse
@@ -118,8 +120,6 @@ def LoadDictionary(lang):
 	return wordList
 
 def GetWordCount(message, lang, dictionary):
-	message = message.lower()
-	message = RemoveNonLetters(message, lang)
 	possibleWords = message.split()
 	
 	if possibleWords == [] or len(possibleWords)==1:
@@ -132,7 +132,7 @@ def GetWordCount(message, lang, dictionary):
 				matches += 1
 	else:
 		return 0.0
-	return float(matches) / len(possibleWords)
+	return matches / len(possibleWords)
 
 def depShorts(possibleWords):
 	cantSingle = 0
@@ -146,12 +146,13 @@ def RemoveNonLetters(message, lang):
     return message.translate(None, delTable)
 
 def IsValidLanguage(lang, message, dictionary, wordPercentage=20, letterPercentage=80):
-	message = message.lower()
-	wordsMatch = GetWordCount(message, lang, dictionary) * 100 >= wordPercentage
-	numLetters = len(RemoveNonLetters(message, lang))
-	messageLettersPercentage = float(numLetters) / len(message) * 100
-	lettersMatch = messageLettersPercentage >= letterPercentage
-	return wordsMatch and lettersMatch
+    message = message.lower()
+    originalMessageLength = len(message)
+    message = RemoveNonLetters(message, lang)
+    wordsMatch = GetWordCount(message, lang, dictionary) >= wordPercentage
+    messageLettersPercentage = len(message) / originalMessageLength
+    lettersMatch = messageLettersPercentage >= letterPercentage
+    return wordsMatch and lettersMatch
 
 def SearchLanguage(fileName, lang):
 	print("\n[i]- Now, Human Language is being searched..")
