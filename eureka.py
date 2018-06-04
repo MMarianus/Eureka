@@ -26,6 +26,17 @@ def GetLangLetters(lang):
 		return 'abcdefghijklmnopqrstuvwxqyzñáóé \t\n'
 	return 'abcdefghijklmnopqrstuvwxqyz \t\n'
 
+
+# based on GetLangLetters we construct two translation tables to use with str.translate
+# this speeds up RemoveNonLetters significantly
+# the character-deletion-table is defined as every character which isn't part of
+# a language, as returned by GetLangLetters
+langDelTable = {
+    "esp": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("esp")),
+    "eng": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("eng")),
+}
+
+
 def GetOutFileName():
 	return "stringsOut.txt"
 
@@ -131,11 +142,8 @@ def depShorts(possibleWords):
 	return cantSingle <= len(possibleWords)/2			
 
 def RemoveNonLetters(message, lang):
-	lettersOnly = []
-	for symbol in message:
-		if symbol in GetLangLetters(lang):
-			lettersOnly.append(symbol)
-	return ''.join(lettersOnly)
+    delTable = langDelTable[lang[0]]
+    return message.translate(None, delTable)
 
 def IsValidLanguage(lang, message, dictionary, wordPercentage=20, letterPercentage=80):
 	message = message.lower()
