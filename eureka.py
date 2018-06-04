@@ -90,7 +90,7 @@ def SearchFBChat(fileName):
 
 def SearchData(fileName, regex):
    allData = {}
-   re.compile(regex)
+   compiledRe = re.compile(regex)
    with open(fileName,'r') as memDumpFile:
       for line in memDumpFile:
          if isURLValidation(regex) == True:
@@ -99,7 +99,7 @@ def SearchData(fileName, regex):
          else:
             if "@" not in line:
                continue
-         matches = re.finditer(regex, line)
+         matches = compiledRe.finditer(line)
          for match in matches:
             allData[match.group().replace('u003c','').replace('u003e','').replace('u003d','')] = 'data'
       if not allData:
