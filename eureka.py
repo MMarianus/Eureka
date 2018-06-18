@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # @MMerianus 2017 - eureka.py - The forensic search tool..
 
+from __future__ import division
+
 import re
 import subprocess
 import argparse
@@ -25,6 +27,17 @@ def GetLangLetters(lang):
 	if 'esp' in lang:
 		return 'abcdefghijklmnopqrstuvwxqyzñáóé \t\n'
 	return 'abcdefghijklmnopqrstuvwxqyz \t\n'
+
+
+# based on GetLangLetters we construct two translation tables to use with str.translate
+# this speeds up RemoveNonLetters significantly
+# the character-deletion-table is defined as every character which isn't part of
+# a language, as returned by GetLangLetters
+langDelTable = {
+    "esp": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("esp")),
+    "eng": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("eng")),
+}
+
 
 def GetOutFileName():
 	return "stringsOut.txt"
@@ -77,7 +90,7 @@ def SearchFBChat(fileName):
 
 def SearchData(fileName, regex):
    allData = {}
-   re.compile(regex)
+   compiledRe = re.compile(regex)
    with open(fileName,'r') as memDumpFile:
       for line in memDumpFile:
          if isURLValidation(regex) == True:
@@ -86,7 +99,7 @@ def SearchData(fileName, regex):
          else:
             if "@" not in line:
                continue
-         matches = re.finditer(regex, line)
+         matches = compiledRe.finditer(line)
          for match in matches:
             allData[match.group().replace('u003c','').replace('u003e','').replace('u003d','')] = 'data'
       if not allData:
@@ -107,8 +120,6 @@ def LoadDictionary(lang):
 	return wordList
 
 def GetWordCount(message, lang, dictionary):
-	message = message.lower()
-	message = RemoveNonLetters(message, lang)
 	possibleWords = message.split()
 	
 	if possibleWords == [] or len(possibleWords)==1:
@@ -121,7 +132,7 @@ def GetWordCount(message, lang, dictionary):
 				matches += 1
 	else:
 		return 0.0
-	return float(matches) / len(possibleWords)
+	return matches / len(possibleWords)
 
 def depShorts(possibleWords):
 	cantSingle = 0
@@ -131,19 +142,17 @@ def depShorts(possibleWords):
 	return cantSingle <= len(possibleWords)/2			
 
 def RemoveNonLetters(message, lang):
-	lettersOnly = []
-	for symbol in message:
-		if symbol in GetLangLetters(lang):
-			lettersOnly.append(symbol)
-	return ''.join(lettersOnly)
+    delTable = langDelTable[lang[0]]
+    return message.translate(None, delTable)
 
-def IsValidLanguage(lang, message, dictionary, wordPercentage=20, letterPercentage=80):
-	message = message.lower()
-	wordsMatch = GetWordCount(message, lang, dictionary) * 100 >= wordPercentage
-	numLetters = len(RemoveNonLetters(message, lang))
-	messageLettersPercentage = float(numLetters) / len(message) * 100
-	lettersMatch = messageLettersPercentage >= letterPercentage
-	return wordsMatch and lettersMatch
+def IsValidLanguage(lang, message, dictionary, wordPercentage=.2, letterPercentage=.8):
+    message = message.lower()
+    originalMessageLength = len(message)
+    message = RemoveNonLetters(message, lang)
+    wordsMatch = GetWordCount(message, lang, dictionary) >= wordPercentage
+    messageLettersPercentage = len(message) / originalMessageLength
+    lettersMatch = messageLettersPercentage >= letterPercentage
+    return wordsMatch and lettersMatch
 
 def SearchLanguage(fileName, lang):
 	print("\n[i]- Now, Human Language is being searched..")
