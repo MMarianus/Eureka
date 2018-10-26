@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @MMerianus 2017 - eureka.py - The forensic search tool..
+# @MMerianus 2017 - eureka.py - The forensics search tool..
+# @MMerianus 2018 - eureka.py - The forensics search tool..
+# Please use Python 3 to run this tool
 
 from __future__ import division
 
@@ -10,43 +12,35 @@ import argparse
 import os
 
 def GetBanner():
-	return '\nEureka! :)\n'
+	return "\nEureka! :)\n"
 
 def GetUsage():
-	return 'python eureka.py -f fileName.ext --fb --je --mails --urls --lang eng'
+	return "python eureka.py -f fileName.ext --fb --je --mails --urls --lang eng"
 
 def GetDescription():
 	return """
 	Eureka! is search tool that identifies Facebook Chats, Emails, URLs, Email Addresses and Human Language in very, very large files (mostly, in memory dumps). NOTE: To save the results into a file, please redirect the output..
 	"""
 
-def notFound():
-	return '\t[i] - No results found, but keep trying!.'
+def NotFound():
+	return "\t[i] - No results found, but keep trying!."
 
 def GetLangLetters(lang):
-	if 'esp' in lang:
-		return 'abcdefghijklmnopqrstuvwxqyzñáóé \t\n'
-	return 'abcdefghijklmnopqrstuvwxqyz \t\n'
+	if "esp" in lang:
+		return "abcdefghijklmnopqrstuvwxqyzñáóé \t\n"
+	return "abcdefghijklmnopqrstuvwxqyz \t\n"
 
-
-# based on GetLangLetters we construct two translation tables to use with str.translate
-# this speeds up RemoveNonLetters significantly
-# the character-deletion-table is defined as every character which isn't part of
-# a language, as returned by GetLangLetters
-langDelTable = {
-    "esp": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("esp")),
-    "eng": "".join(l for l in [chr(x) for x in xrange(256)] if l not in GetLangLetters("eng")),
-}
-
+def LangDelTable(lang):
+    return "".join(l.lower() for l in [chr(x) for x in range(256)] if l.lower() not in GetLangLetters(lang))
 
 def GetOutFileName():
 	return "stringsOut.txt"
 
 def StringSearch(filename):
-	cmd = 'strings'
-	if os.name == 'nt':
-		cmd = 'strings2'
-	cmdStringSearch = cmd + ' ' + filename + ' > ' + GetOutFileName() 
+	cmd = "strings"
+	if os.name == "nt":
+		cmd = "strings2"
+	cmdStringSearch = cmd + " " + filename + " > " + GetOutFileName() 
 	subprocess.call(cmdStringSearch, shell=True)
 	
 def WarmingUp():
@@ -54,27 +48,29 @@ def WarmingUp():
 	parser.add_argument("-f", metavar='File_Name', nargs=1, required=True, help="File to analyze.")
 	parser.add_argument("--je",action='store_true', help="JSON Emails Search. (Raw output)")
 	parser.add_argument("--mails", action='store_true', help="Mail Addresses search.")
-	parser.add_argument("--urls", action='store_true', help="URLs search.")
+	parser.add_argument("--urls", action='store_true', help="URLs search. For each detected URL, web vulnerabilities presence will be audited.")
 	parser.add_argument("--fb", action='store_true', help="Facebook chats search.")
 	parser.add_argument("--lang", metavar='\'eng\' [or] \'esp\'', nargs=1, help="Identify human language in a given file. 'esp' for spanish, 'eng' for english language identification. Example: python eureka.py -f pagefile.sys --lan eng ")
 	return parser.parse_args()
 
-def SearchMails(fileName):
-   with open(fileName,'r') as memDumpFile:
+#ToDo: deprecate this functionality
+def SearchJSONMails(fileName):
+    print("\n[i]- Now, JSON Emails are being searched..")
+    with open(fileName,'r') as memDumpFile:
       found = 0
       for line in memDumpFile:
          if "email\\u" in line:
             found += 1
             print(line)
       if found == 0:
-         print(notFound())
+         print(NotFound())
             
 def FilterFBChat(chat):
 	filReg = "\"(?:thread_id|message_id|author|timestamp|body)\":\"{0,1}[^\"]+[\"|\,]"
 	re.compile(filReg)
 	matches2 = re.finditer(filReg, chat)
 	for match2 in matches2:
-		print match2.group()
+		print(match2.group())
 
 def SearchFBChat(fileName):
    print("\n[i]- Now, Facebook chats are being searched..")
@@ -86,28 +82,33 @@ def SearchFBChat(fileName):
             found += 1
             FilterFBChat(line)
       if found == 0:
-         print(notFound())
+         print(NotFound())
 
 def SearchData(fileName, regex):
-   allData = {}
-   compiledRe = re.compile(regex)
-   with open(fileName,'r') as memDumpFile:
-      for line in memDumpFile:
-         if isURLValidation(regex) == True:
-            if "www." not in line and "http" not in line and "ftp" not in line:
-               continue
-         else:
-            if "@" not in line:
-               continue
-         matches = compiledRe.finditer(line)
-         for match in matches:
-            allData[match.group().replace('u003c','').replace('u003e','').replace('u003d','')] = 'data'
-      if not allData:
-         print(notFound())
-      else:
-         for data in allData:
-            print data
-			
+    allData = {}
+    with open(fileName,'r') as memDumpFile:
+        for line in memDumpFile:
+            if isURLValidation(regex) == True:
+               if "www." not in line and "http" not in line and "ftp" not in line:
+                  continue
+            else:
+               if "@" not in line:
+                  continue
+            data = ValidateLine(line,regex)
+            if data:
+                allData[data] = ''
+        if not allData:
+            return NotFound()
+        else:
+            return allData
+          
+def ValidateLine(line, regex):
+    compiledRe = re.compile(regex, re.IGNORECASE)
+    matches = compiledRe.finditer(line)
+    for match in matches:
+        return line.replace('u003c','').replace('u003e','').replace('u003d','').replace('\n','')
+       #return match.group().replace('u003c','').replace('u003e','').replace('u003d','')
+          		
 def LoadDictionary(lang):
 	if 'eng' in lang:
 		dictionaryFile = open('engDict.txt','r')
@@ -125,7 +126,7 @@ def GetWordCount(message, lang, dictionary):
 	if possibleWords == [] or len(possibleWords)==1:
 		return 0.0 
 	
-	if depShorts(possibleWords):
+	if DepShorts(possibleWords):
 		matches = 0
 		for word in possibleWords:
 			if word in dictionary:
@@ -134,7 +135,7 @@ def GetWordCount(message, lang, dictionary):
 		return 0.0
 	return matches / len(possibleWords)
 
-def depShorts(possibleWords):
+def DepShorts(possibleWords):
 	cantSingle = 0
 	for word in possibleWords:
 		if len(word) < 2:
@@ -142,8 +143,9 @@ def depShorts(possibleWords):
 	return cantSingle <= len(possibleWords)/2			
 
 def RemoveNonLetters(message, lang):
-    delTable = langDelTable[lang[0]]
-    return message.translate(None, delTable)
+    delTable = LangDelTable(lang[0])
+    translator = message.maketrans("","",delTable)
+    return message.translate(translator)
 
 def IsValidLanguage(lang, message, dictionary, wordPercentage=.2, letterPercentage=.8):
     message = message.lower()
@@ -153,10 +155,29 @@ def IsValidLanguage(lang, message, dictionary, wordPercentage=.2, letterPercenta
     messageLettersPercentage = len(message) / originalMessageLength
     lettersMatch = messageLettersPercentage >= letterPercentage
     return wordsMatch and lettersMatch
+    
+def SearchUrls(fileName):
+    print("\n[i]- Now, URLs are being searched..")
+    urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
+    urlList = SearchData(GetOutFileName(), urlReg)
+    if urlList != NotFound():
+        print("[i]- URLs were found:")
+        urlList = SearchXSS(urlList)
+        for url,flag in urlList.items():
+            print(flag + "- " + url)
+    else:
+        print(NotFound())
 
+def SearchXSS(urlList):
+    for url in urlList:
+        x = ValidateLine(url, r"((\%3C)|<)((\%2F)|\/)*([a-z0-9\%]|\s)+(\/|((\%3E)|>))+|((\"|\%22)(>|\%2f))")
+        if x:
+            urlList[url] = "[XSS Found]"
+    return urlList
+    
 def SearchLanguage(fileName, lang):
 	print("\n[i]- Now, Human Language is being searched..")
-	if not 'esp' in lang and not 'eng' in lang:
+	if not "esp" in lang and not "eng" in lang:
 		print("\t[!]- No valid language was provided.")
 	else:
 		print("\t[i]- Using %s language for detection." % ('English' if 'eng' in args.lang else 'Spanish'))
@@ -164,17 +185,28 @@ def SearchLanguage(fileName, lang):
 		with open(fileName,'r') as file:
 			for line in file:
 				if IsValidLanguage(lang, line, dictionary):
-					print line.replace('\n','')
+					print(line.replace('\n',''))
 
 def isURLValidation(regex):
    if "http" in regex:
       return True
    return False
-				
+
+def SearchEmails(fileName):
+    print("\n[i]- Now, Email Addresses are being searched..")
+    mailReg = r"(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
+    mailList = SearchData(fileName, mailReg)
+    if mailList != NotFound():
+        print("[i]- Emails were found:")
+        for mail in mailList:
+            print(mail)
+    else:
+        print(NotFound())
+			
 if __name__ == "__main__":
     print(GetBanner())
     args = WarmingUp()
-
+    
     if not args.je and not args.mails and not args.lang and not args.urls and not args.fb:
         print("\n[!]- Maybe you need help, as no parameter was provided. You can try with \'eureka.py -h\'..\n")
         quit()
@@ -183,24 +215,19 @@ if __name__ == "__main__":
     StringSearch(args.f[0])
     
     if args.je:
-       print("\n[i]- Now, JSON Emails are being searched..")
-       SearchMails(GetOutFileName())
+        SearchJSONMails(GetOutFileName())
 		
     if args.mails:
-       print("\n[i]- Now, Email Addresses are being searched..")
-       mailReg = r"(?:[a-z0-9_-]+(?:\.[a-z0-9_-]+)*|\"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
-       SearchData(GetOutFileName(), mailReg)
+        SearchEmails(GetOutFileName())
 		
     if args.urls:
-       print("\n[i]- Now, URLs are being searched..")
-       urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
-       SearchData(GetOutFileName(), urlReg)
+        SearchUrls(GetOutFileName())
 		
     if args.fb:
-       SearchFBChat(GetOutFileName())	
+        SearchFBChat(GetOutFileName())	
 
     if args.lang:
-       SearchLanguage(GetOutFileName(), args.lang)
+        SearchLanguage(GetOutFileName(), args.lang)
 	
     print("\n")
     os.remove(GetOutFileName())
