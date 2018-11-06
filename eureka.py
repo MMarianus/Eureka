@@ -5,7 +5,8 @@
 # Please use Python 3 to run this tool
 
 from __future__ import division
-
+from collections import OrderedDict
+from operator import itemgetter
 import re
 import subprocess
 import argparse
@@ -106,8 +107,8 @@ def ValidateLine(line, regex):
     compiledRe = re.compile(regex, re.IGNORECASE)
     matches = compiledRe.finditer(line)
     for match in matches:
-        return line.replace('u003c','').replace('u003e','').replace('u003d','').replace('\n','')
-       #return match.group().replace('u003c','').replace('u003e','').replace('u003d','')
+        #return line.replace('u003c','').replace('u003e','').replace('u003d','').replace('\n','')
+        return match.group().replace('u003c','').replace('u003e','').replace('u003d','')
           		
 def LoadDictionary(lang):
 	if 'eng' in lang:
@@ -158,23 +159,43 @@ def IsValidLanguage(lang, message, dictionary, wordPercentage=.2, letterPercenta
     
 def SearchUrls(fileName):
     print("\n[i]- Now, URLs are being searched..")
-    urlReg = r"(?=https?://|www\.|ftp://)([^\s\"\'\)\>]+)"
+    urlReg = r"(?=https?:\/\/|www\.|ftp:\/\/)([^\s\"\'\)\>]+)"
     urlList = SearchData(GetOutFileName(), urlReg)
     if urlList != NotFound():
         print("[i]- URLs were found:")
-        urlList = SearchXSS(urlList)
+        urlList = OrderedDict(sorted(SearchWebVulns(urlList).items(), key=itemgetter(1)))
         for url,flag in urlList.items():
             print(flag + "- " + url)
     else:
         print(NotFound())
 
-def SearchXSS(urlList):
+def SearchXSS(url):
+    rdo = ValidateLine(url, r"((\%3C))((\%2F)|\/)*([a-z0-9\%]|\s)+(\/|((\%3E)))+|((\%22)(\%2f))")
+    if rdo:
+        return "XSS"
+    return ""
+    
+def SearchWebVulns(urlList):
     for url in urlList:
-        x = ValidateLine(url, r"((\%3C)|<)((\%2F)|\/)*([a-z0-9\%]|\s)+(\/|((\%3E)|>))+|((\"|\%22)(>|\%2f))")
-        if x:
-            urlList[url] = "[XSS Found]"
+        vulnName = SearchXSS(url)
+        if vulnName:
+            urlList[url] = WebVulnPrefix(vulnName)
+            continue
+        vulnName = SearchSQLi(url)
+        if vulnName:
+            urlList[url] = WebVulnPrefix(vulnName)
+            continue
     return urlList
     
+def SearchSQLi(url):
+    rdo = ValidateLine(url, r"(\%27\+)")
+    if rdo:
+        return "SQLi"
+    return ""
+
+def WebVulnPrefix(vulnName):
+    return "[Web Vuln Found: %s]" % (vulnName)
+
 def SearchLanguage(fileName, lang):
 	print("\n[i]- Now, Human Language is being searched..")
 	if not "esp" in lang and not "eng" in lang:
