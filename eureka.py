@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @MMerianus 2017 - eureka.py - The forensics search tool..
-# @MMerianus 2018 - eureka.py - The forensics search tool..
+# eureka.py - The forensics search tool..
+# eureka.py - The forensics search tool..
 # Please use Python 3 to run this tool
 
 from __future__ import division
